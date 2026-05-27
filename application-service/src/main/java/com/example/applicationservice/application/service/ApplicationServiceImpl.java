@@ -6,6 +6,7 @@ import com.example.applicationservice.application.ApplicationRepository;
 import com.example.applicationservice.application.enums.ApplicationStatus;
 import com.example.applicationservice.application.web.ApplicationResponse;
 import com.example.applicationservice.application.web.CreateApplicationRequest;
+import com.example.applicationservice.kafka.ApplicationEventPublisher;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,15 +14,22 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import java.util.*;
 
 @Service
 @Slf4j
 @RequiredArgsConstructor
 public class ApplicationServiceImpl implements ApplicationService {
 
+    private final Map<ApplicationStatus, List<ApplicationStatus>> statusTransition = Map.of(
+            ApplicationStatus.NEW, List.of(ApplicationStatus.SCORING_IN_PROGRESS, ApplicationStatus.FAILED),
+            ApplicationStatus.SCORING_IN_PROGRESS, List.of(ApplicationStatus.SCORING_APPROVED, ApplicationStatus.SCORING_REJECTED, ApplicationStatus.FAILED),
+            ApplicationStatus.SCORING_APPROVED, List.of(ApplicationStatus.APPROVED, ApplicationStatus.FAILED),
+            ApplicationStatus.APPROVED, List.of(ApplicationStatus.ISSUED, ApplicationStatus.FAILED)
+    );
     private final ApplicationRepository applicationRepository;
     private final ApplicationMapper applicationMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -35,9 +43,13 @@ public class ApplicationServiceImpl implements ApplicationService {
         }
 
         ApplicationEntity entity = applicationMapper.toEntity(request);
-        applicationRepository.save(entity);
+        ApplicationEntity savedEntity = applicationRepository.save(entity);
 
-        return applicationMapper.toResponse(entity);
+        eventPublisher.publishApplicationCreated(
+                applicationMapper.toApplicationCreatedEvent(savedEntity)
+        );
+
+        return applicationMapper.toResponse(savedEntity);
     }
 
     @Override
@@ -53,5 +65,30 @@ public class ApplicationServiceImpl implements ApplicationService {
         return applicationRepository.findAll().stream()
                 .map(applicationMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    public ApplicationResponse updateApplicationStatus(Long id, ApplicationStatus status) {
+        ApplicationEntity entity = applicationRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Заявка с ID " + id + " не найдена"));
+
+        ApplicationStatus currentStatus = entity.getStatus();
+
+        List<ApplicationStatus> nextStatuses = statusTransition.getOrDefault(
+                currentStatus,
+                List.of()
+        );
+
+        if(nextStatuses.contains(status)){
+            entity.setStatus(status);
+        }else {
+            throw new IllegalStateException(
+                    "Невозможно перейти из статуса " + currentStatus + " в статус " + status
+            );
+        }
+
+        applicationRepository.save(entity);
+
+        return applicationMapper.toResponse(entity);
     }
 }

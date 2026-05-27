@@ -1,5 +1,6 @@
 package com.example.applicationservice.application.service;
 
+import com.example.applicationservice.application.enums.ApplicationStatus;
 import com.example.applicationservice.application.web.ApplicationResponse;
 import com.example.applicationservice.application.web.CreateApplicationRequest;
 
@@ -26,4 +27,12 @@ public interface ApplicationService {
      * @return ist<ApplicationResponse> - Список заявок
      */
     List<ApplicationResponse> getAllApplications();
+
+    /**
+     * Обновление статуса заявки
+     * @param id - ID заявки
+     * @param status - Новый статус заявки
+     * @return ApplicationResponse - Обновленная заявка
+     */
+    ApplicationResponse updateApplicationStatus(Long id, ApplicationStatus status);
 }

@@ -2,6 +2,7 @@ package com.example.applicationservice.application;
 
 import com.example.applicationservice.application.web.ApplicationResponse;
 import com.example.applicationservice.application.web.CreateApplicationRequest;
+import com.example.applicationservice.kafka.event.ApplicationCreatedEvent;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -15,4 +16,8 @@ public interface ApplicationMapper {
     @Mapping(target = "status", constant = "NEW")
     @Mapping(target = "version", constant = "0")
     ApplicationEntity toEntity(CreateApplicationRequest request);
+
+    @Mapping(target = "eventId", expression = "java(java.util.UUID.randomUUID().toString())")
+    @Mapping(target = "applicationId", source = "id")
+    ApplicationCreatedEvent toApplicationCreatedEvent(ApplicationEntity entity);
 }

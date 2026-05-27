@@ -5,12 +5,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
-import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import java.time.LocalDateTime;
 
-@ControllerAdvice
+@RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
@@ -28,7 +28,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(EntityNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleEntityNotFoundException(EntityNotFoundException ex) {
-        log.error("Handle entity not found exception", ex);
+        log.warn("Handle entity not found exception", ex);
 
         var errorDto = new ErrorResponse(
                 "Entity Not Found",
@@ -55,7 +55,7 @@ public class GlobalExceptionHandler {
         );
 
         return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
+                .status(HttpStatus.CONFLICT)
                 .body(errorDto);
     }
 

@@ -3,6 +3,7 @@ package com.example.applicationservice.application;
 import com.example.applicationservice.application.service.ApplicationService;
 import com.example.applicationservice.application.web.ApplicationResponse;
 import com.example.applicationservice.application.web.CreateApplicationRequest;
+import com.example.applicationservice.application.web.UpdateApplicationStatusRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,5 +42,14 @@ public class ApplicationController {
     public ResponseEntity<List<ApplicationResponse>> getAllApplications() {
         log.info("Received request to get all applications");
         return ResponseEntity.ok(applicationService.getAllApplications());
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<ApplicationResponse> updateApplicationStatus(
+            @PathVariable Long id,
+            @RequestBody @Valid UpdateApplicationStatusRequest request
+    ){
+        log.info("Received request to update application status, id={}, status={}", id, request.status());
+        return ResponseEntity.ok(applicationService.updateApplicationStatus(id,  request.status()));
     }
 }
