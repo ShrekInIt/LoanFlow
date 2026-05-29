@@ -20,7 +20,7 @@ public class ApplicationCreatedConsumer {
             topics = "${topics.application.created}",
             groupId = "${spring.kafka.consumer.group-id}"
     )
-    public void consume(ApplicationCreatedEvent event) throws Exception {
+    public void consume(ApplicationCreatedEvent event) {
         log.info("Received application created message: {}", event);
         ScoringCompletedEvent completedEvent = scoringService.scoring(event);
         scoringEventPublisher.publish(completedEvent);
