@@ -5,8 +5,6 @@ import com.example.applicationservice.application.ApplicationMapper;
 import com.example.applicationservice.application.ApplicationRepository;
 import com.example.applicationservice.application.web.ApplicationResponse;
 import com.example.applicationservice.application.web.CreateApplicationRequest;
-import com.example.applicationservice.kafka.ApplicationEventPublisher;
-import com.example.applicationservice.outbox.OutboxEventPublisherJob;
 import com.example.applicationservice.outbox.OutboxService;
 import com.example.enums.ApplicationStatus;
 import com.example.event.ScoringCompletedEvent;
@@ -17,9 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.*;
-
-import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j

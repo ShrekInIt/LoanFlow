@@ -17,7 +17,7 @@ public class ScoringEventPublisher {
 
     private final KafkaTemplate<String, ScoringCompletedEvent> kafkaTemplate;
 
-    public void publish(ScoringCompletedEvent event) throws Exception {
+    public void publish(ScoringCompletedEvent event) {
         kafkaTemplate.send(topic, event.applicationId().toString(), event);
         log.info("Published scoring completed event to Kafka: key={}, payload={}", event.applicationId(), event);
     }
