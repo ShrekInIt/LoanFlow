@@ -1,8 +1,9 @@
 package com.example.applicationservice.application.service;
 
-import com.example.applicationservice.application.enums.ApplicationStatus;
 import com.example.applicationservice.application.web.ApplicationResponse;
 import com.example.applicationservice.application.web.CreateApplicationRequest;
+import com.example.enums.ApplicationStatus;
+import com.example.event.ScoringCompletedEvent;
 
 import java.util.List;
 
@@ -35,4 +36,17 @@ public interface ApplicationService {
      * @return ApplicationResponse - Обновленная заявка
      */
     ApplicationResponse updateApplicationStatus(Long id, ApplicationStatus status);
+
+    /**
+     * Обновление статуса заявки после получения результата скоринга
+     * @param event - Событие из kafka
+     */
+    void processScoringResult(ScoringCompletedEvent event);
+
+    /**
+     * Выдача кредита
+     * @param id - Id заявки
+     * @return ApplicationResponse - Выданная заявка
+     */
+    ApplicationResponse issueApplication(Long id);
 }

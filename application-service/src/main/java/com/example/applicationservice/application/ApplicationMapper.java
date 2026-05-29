@@ -2,7 +2,7 @@ package com.example.applicationservice.application;
 
 import com.example.applicationservice.application.web.ApplicationResponse;
 import com.example.applicationservice.application.web.CreateApplicationRequest;
-import com.example.applicationservice.kafka.event.ApplicationCreatedEvent;
+import com.example.event.ApplicationCreatedEvent;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 

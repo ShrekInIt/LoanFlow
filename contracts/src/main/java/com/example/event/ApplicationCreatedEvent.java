@@ -1,12 +1,10 @@
-package com.example.applicationservice.kafka.event;
+package com.example.event;
 
-import com.example.applicationservice.application.enums.ApplicationStatus;
-import lombok.Builder;
+import com.example.enums.ApplicationStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Builder
 public record ApplicationCreatedEvent(
         String eventId,
         Long applicationId,

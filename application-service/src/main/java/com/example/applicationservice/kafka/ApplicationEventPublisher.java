@@ -1,9 +1,8 @@
 package com.example.applicationservice.kafka;
 
-import com.example.applicationservice.kafka.event.ApplicationCreatedEvent;
+import com.example.applicationservice.outbox.OutboxEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
@@ -12,15 +11,14 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ApplicationEventPublisher {
 
-    @Value("${topics.application.created}")
-    private String topic;
+    private final KafkaTemplate<String, String> kafkaTemplate;
 
-    private final KafkaTemplate<String, ApplicationCreatedEvent> kafkaTemplate;
+    public void publish(OutboxEvent event) throws Exception {
+        log.info("Publishing outbox event: id={}, topic={}, aggregateId={}",
+                event.id(), event.topic(), event.aggregateId());
 
-    public void publishApplicationCreated(ApplicationCreatedEvent event){
-        log.info("Publishing ApplicationCreatedEvent: applicationId={}, eventId={}",
-                event.applicationId(), event.eventId());
-
-        kafkaTemplate.send(topic, event.applicationId().toString(),event);
+        kafkaTemplate
+                .send(event.topic(), event.aggregateId(), event.payload())
+                .get();
     }
 }

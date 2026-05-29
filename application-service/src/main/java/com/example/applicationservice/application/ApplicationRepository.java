@@ -1,6 +1,6 @@
 package com.example.applicationservice.application;
 
-import com.example.applicationservice.application.enums.ApplicationStatus;
+import com.example.enums.ApplicationStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 

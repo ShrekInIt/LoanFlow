@@ -3,10 +3,13 @@ package com.example.applicationservice.application.service;
 import com.example.applicationservice.application.ApplicationEntity;
 import com.example.applicationservice.application.ApplicationMapper;
 import com.example.applicationservice.application.ApplicationRepository;
-import com.example.applicationservice.application.enums.ApplicationStatus;
 import com.example.applicationservice.application.web.ApplicationResponse;
 import com.example.applicationservice.application.web.CreateApplicationRequest;
 import com.example.applicationservice.kafka.ApplicationEventPublisher;
+import com.example.applicationservice.outbox.OutboxEventPublisherJob;
+import com.example.applicationservice.outbox.OutboxService;
+import com.example.enums.ApplicationStatus;
+import com.example.event.ScoringCompletedEvent;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.*;
+
+import static org.springframework.transaction.annotation.Propagation.REQUIRES_NEW;
 
 @Service
 @Slf4j
@@ -25,11 +30,13 @@ public class ApplicationServiceImpl implements ApplicationService {
             ApplicationStatus.NEW, List.of(ApplicationStatus.SCORING_IN_PROGRESS, ApplicationStatus.FAILED),
             ApplicationStatus.SCORING_IN_PROGRESS, List.of(ApplicationStatus.SCORING_APPROVED, ApplicationStatus.SCORING_REJECTED, ApplicationStatus.FAILED),
             ApplicationStatus.SCORING_APPROVED, List.of(ApplicationStatus.APPROVED, ApplicationStatus.FAILED),
+            ApplicationStatus.SCORING_REJECTED, List.of(ApplicationStatus.REJECTED, ApplicationStatus.FAILED),
             ApplicationStatus.APPROVED, List.of(ApplicationStatus.ISSUED, ApplicationStatus.FAILED)
     );
     private final ApplicationRepository applicationRepository;
     private final ApplicationMapper applicationMapper;
-    private final ApplicationEventPublisher eventPublisher;
+    private final OutboxService outboxService;
+
 
     @Override
     @Transactional
@@ -45,18 +52,18 @@ public class ApplicationServiceImpl implements ApplicationService {
         ApplicationEntity entity = applicationMapper.toEntity(request);
         ApplicationEntity savedEntity = applicationRepository.save(entity);
 
-        eventPublisher.publishApplicationCreated(
-                applicationMapper.toApplicationCreatedEvent(savedEntity)
-        );
+        savedEntity.setStatus(ApplicationStatus.SCORING_IN_PROGRESS);
+        ApplicationEntity scoringEntity = applicationRepository.save(savedEntity);
 
-        return applicationMapper.toResponse(savedEntity);
+        outboxService.saveApplicationCreatedEvent(scoringEntity);
+
+        return applicationMapper.toResponse(scoringEntity);
     }
 
     @Override
     @Transactional(readOnly = true)
     public ApplicationResponse getApplicationById(Long id) {
-        return applicationMapper.toResponse(applicationRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Заявка с ID " + id + " не найдена")));
+        return applicationMapper.toResponse(getApplicationEntity(id));
     }
 
     @Override
@@ -68,9 +75,9 @@ public class ApplicationServiceImpl implements ApplicationService {
     }
 
     @Override
+    @Transactional
     public ApplicationResponse updateApplicationStatus(Long id, ApplicationStatus status) {
-        ApplicationEntity entity = applicationRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Заявка с ID " + id + " не найдена"));
+        ApplicationEntity entity = getApplicationEntity(id);
 
         ApplicationStatus currentStatus = entity.getStatus();
 
@@ -90,5 +97,33 @@ public class ApplicationServiceImpl implements ApplicationService {
         applicationRepository.save(entity);
 
         return applicationMapper.toResponse(entity);
+    }
+
+    @Override
+    @Transactional
+    public void processScoringResult(ScoringCompletedEvent event) {
+        log.info("Получено событие о завершении скоринга для заявки с id: {}, результат скоринга: {}",
+                event.applicationId(), event.approved());
+        Long id = event.applicationId();
+        if(event.approved()){
+            updateApplicationStatus(id, ApplicationStatus.SCORING_APPROVED);
+            updateApplicationStatus(id, ApplicationStatus.APPROVED);
+        }else {
+            updateApplicationStatus(id, ApplicationStatus.SCORING_REJECTED);
+            updateApplicationStatus(id, ApplicationStatus.REJECTED);
+        }
+        log.info("Заявка с id: {} обновлена после получения результата скоринга, новый статус: {}",
+                id, getApplicationEntity(id).getStatus());
+    }
+
+    @Override
+    @Transactional
+    public ApplicationResponse issueApplication(Long id) {
+        return updateApplicationStatus(id, ApplicationStatus.ISSUED);
+    }
+
+    private ApplicationEntity getApplicationEntity(Long id){
+        return applicationRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Заявка с ID " + id + " не найдена"));
     }
 }

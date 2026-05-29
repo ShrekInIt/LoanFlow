@@ -19,7 +19,7 @@ spring:
         show_sql: true
 
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:${KAFKA_PORT:9092}}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
@@ -28,6 +28,15 @@ spring:
       spring:
         json:
           add-type-info: false
+
+    consumer:
+      group-id: application-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+        spring.json.value.default.type: com.example.event.ScoringCompletedEvent
 
 
   flyway:
@@ -45,3 +54,5 @@ logging:
 topics:
   application:
     created: application.created
+  scoring:
+    completed: scoring.completed

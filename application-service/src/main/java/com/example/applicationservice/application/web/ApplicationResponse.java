@@ -1,6 +1,6 @@
 package com.example.applicationservice.application.web;
 
-import com.example.applicationservice.application.enums.ApplicationStatus;
+import com.example.enums.ApplicationStatus;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Builder;
 

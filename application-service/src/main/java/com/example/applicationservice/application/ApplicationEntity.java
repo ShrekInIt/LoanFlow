@@ -1,6 +1,6 @@
 package com.example.applicationservice.application;
 
-import com.example.applicationservice.application.enums.ApplicationStatus;
+import com.example.enums.ApplicationStatus;
 import jakarta.persistence.*;
 import lombok.*;
 

@@ -4,6 +4,7 @@ import com.example.applicationservice.application.service.ApplicationService;
 import com.example.applicationservice.application.web.ApplicationResponse;
 import com.example.applicationservice.application.web.CreateApplicationRequest;
 import com.example.applicationservice.application.web.UpdateApplicationStatusRequest;
+import com.example.enums.ApplicationStatus;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,14 @@ public class ApplicationController {
         log.info("Received request to create application");
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(applicationService.createApplication(request));
+    }
+
+    @PostMapping("/{id}/issue")
+    public ResponseEntity<ApplicationResponse> issueApplication(
+            @PathVariable Long id
+    ) {
+        log.info("Received request to issue application with ID: {}", id);
+        return ResponseEntity.ok(applicationService.issueApplication(id));
     }
 
     @GetMapping("/{id}")

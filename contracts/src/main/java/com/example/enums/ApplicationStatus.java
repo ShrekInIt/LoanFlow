@@ -1,4 +1,4 @@
-package com.example.applicationservice.application.enums;
+package com.example.enums;
 
 public enum ApplicationStatus {
     NEW,

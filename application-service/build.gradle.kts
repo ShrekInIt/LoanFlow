@@ -19,6 +19,8 @@ repositories {
 }
 
 dependencies {
+    implementation(project(":contracts"))
+
     implementation("org.springframework.boot:spring-boot-starter-aop")
 
     implementation("org.springframework.boot:spring-boot-starter-actuator")
