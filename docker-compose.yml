@@ -15,6 +15,21 @@ services:
     networks:
       - credit-network
 
+  scoring-postgres:
+    image: postgres:16
+    container_name: credit-scoring-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${SCORING_POSTGRES_DB}
+      POSTGRES_USER: ${SCORING_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${SCORING_POSTGRES_PASSWORD}
+    ports:
+      - "${SCORING_POSTGRES_PORT}:5432"
+    volumes:
+      - scoring_postgres_data:/var/lib/postgresql/data
+    networks:
+      - credit-network
+
   kafka:
     image: confluentinc/cp-kafka:7.6.1
     container_name: credit-kafka
@@ -58,6 +73,7 @@ services:
 
 volumes:
   postgres_data:
+  scoring_postgres_data:
   kafka_data:
 
 networks:

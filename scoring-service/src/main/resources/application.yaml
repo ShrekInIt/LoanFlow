@@ -5,21 +5,42 @@ spring:
   application:
     name: scoring-service
 
+  datasource:
+    url: jdbc:postgresql://localhost:${SCORING_POSTGRES_PORT:5434}/${SCORING_POSTGRES_DB:scoring_db}
+    username: ${SCORING_POSTGRES_USER:scoring_user}
+    password: ${SCORING_POSTGRES_PASSWORD:scoring_password}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:${KAFKA_PORT:9092}}
 
     consumer:
       group-id: scoring-service
       auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+
+      key-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+
       properties:
-        spring.json.trusted.packages: "*"
+        spring.deserializer.key.delegate.class: org.apache.kafka.common.serialization.StringDeserializer
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+
+        spring.json.trusted.packages: com.example.event
         spring.json.value.default.type: com.example.event.ApplicationCreatedEvent
 
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
       properties:
         spring.json.add.type.headers: false
 

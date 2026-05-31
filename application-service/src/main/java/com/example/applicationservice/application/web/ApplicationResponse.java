@@ -15,6 +15,7 @@ public record ApplicationResponse(
         BigDecimal creditAmount,
         String creditPurpose,
         ApplicationStatus status,
+        String failureReason,
         @JsonFormat(pattern = "dd.MM.yyyy HH:mm:ss")
         LocalDateTime createdAt,
         @JsonFormat(pattern = "dd.MM.yyyy HH:mm:ss")

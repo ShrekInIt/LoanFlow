@@ -11,13 +11,13 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ApplicationEventPublisher {
 
-    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final KafkaTemplate<String, String> outboxKafkaTemplate;
 
     public void publish(OutboxEvent event) throws Exception {
         log.info("Publishing outbox event: id={}, topic={}, aggregateId={}",
                 event.id(), event.topic(), event.aggregateId());
 
-        kafkaTemplate
+        outboxKafkaTemplate
                 .send(event.topic(), event.aggregateId(), event.payload())
                 .get();
     }

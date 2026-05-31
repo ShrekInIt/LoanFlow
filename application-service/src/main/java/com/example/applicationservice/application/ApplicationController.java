@@ -3,7 +3,9 @@ package com.example.applicationservice.application;
 import com.example.applicationservice.application.service.ApplicationService;
 import com.example.applicationservice.application.web.ApplicationResponse;
 import com.example.applicationservice.application.web.CreateApplicationRequest;
+import com.example.applicationservice.application.web.FailApplicationRequest;
 import com.example.applicationservice.application.web.UpdateApplicationStatusRequest;
+import com.example.applicationservice.saga.LoanSagaOrchestrator;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +22,7 @@ import java.util.List;
 public class ApplicationController {
 
     private final ApplicationService applicationService;
+    private final LoanSagaOrchestrator loanSagaOrchestrator;
 
     @PostMapping
     public ResponseEntity<ApplicationResponse> createApplication(
@@ -28,6 +31,33 @@ public class ApplicationController {
         log.info("Received request to create application");
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(applicationService.createApplication(request));
+    }
+
+    @PostMapping("/{id}/fail")
+    public ResponseEntity<ApplicationResponse> failApplication(
+            @PathVariable Long id,
+            @RequestBody @Valid FailApplicationRequest request
+    ) {
+        log.info("Received request to fail application with id: {}, reason: {}", id, request);
+        return ResponseEntity.ok(applicationService.failApplication(id, request.reason()));
+    }
+
+    @PostMapping("/{id}/cancel-issue")
+    public ResponseEntity<ApplicationResponse> cancelIssuedApplication(
+            @PathVariable Long id,
+            @RequestBody @Valid FailApplicationRequest request
+    ) {
+        log.info("Received request to cancel issued application with id: {}, reason: {}", id, request);
+        return ResponseEntity.ok(applicationService.cancelIssuedApplication(id, request.reason()));
+    }
+
+    @PostMapping("/{id}/issue-with-notification")
+    public ResponseEntity<Void> issueApplicationWithNotification(
+            @PathVariable Long id
+    ) {
+        log.info("Received request to issue application with id: {} with notification", id);
+        loanSagaOrchestrator.issueWithNotification(id);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{id}/issue")

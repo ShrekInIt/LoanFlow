@@ -49,4 +49,19 @@ public interface ApplicationService {
      * @return ApplicationResponse - Выданная заявка
      */
     ApplicationResponse issueApplication(Long id);
+
+    /**
+     * Перевод статуса в FAILED
+     * @param id - Id заявки
+     * @param reason - Причина отказа
+     */
+    ApplicationResponse failApplication(Long id, String reason);
+
+    /**
+     * Отмена выданного кредита
+     * @param id - Id заявки
+     * @param reason - Причина отмены
+     * @return ApplicationResponse - Обновленная заявка
+     */
+    ApplicationResponse cancelIssuedApplication(Long id, String reason);
 }

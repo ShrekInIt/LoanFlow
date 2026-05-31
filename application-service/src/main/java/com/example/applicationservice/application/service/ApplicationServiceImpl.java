@@ -28,7 +28,8 @@ public class ApplicationServiceImpl implements ApplicationService {
             ApplicationStatus.SCORING_IN_PROGRESS, List.of(ApplicationStatus.SCORING_APPROVED, ApplicationStatus.SCORING_REJECTED, ApplicationStatus.FAILED),
             ApplicationStatus.SCORING_APPROVED, List.of(ApplicationStatus.APPROVED, ApplicationStatus.FAILED),
             ApplicationStatus.SCORING_REJECTED, List.of(ApplicationStatus.REJECTED, ApplicationStatus.FAILED),
-            ApplicationStatus.APPROVED, List.of(ApplicationStatus.ISSUED, ApplicationStatus.FAILED)
+            ApplicationStatus.APPROVED, List.of(ApplicationStatus.ISSUED, ApplicationStatus.FAILED),
+            ApplicationStatus.ISSUED, List.of(ApplicationStatus.ISSUE_CANCELLED)
     );
     private final ApplicationRepository applicationRepository;
     private final ApplicationMapper applicationMapper;
@@ -76,20 +77,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     public ApplicationResponse updateApplicationStatus(Long id, ApplicationStatus status) {
         ApplicationEntity entity = getApplicationEntity(id);
 
-        ApplicationStatus currentStatus = entity.getStatus();
-
-        List<ApplicationStatus> nextStatuses = statusTransition.getOrDefault(
-                currentStatus,
-                List.of()
-        );
-
-        if(nextStatuses.contains(status)){
-            entity.setStatus(status);
-        }else {
-            throw new IllegalStateException(
-                    "Невозможно перейти из статуса " + currentStatus + " в статус " + status
-            );
-        }
+        moveStatus(entity, status);
 
         applicationRepository.save(entity);
 
@@ -102,21 +90,60 @@ public class ApplicationServiceImpl implements ApplicationService {
         log.info("Получено событие о завершении скоринга для заявки с id: {}, результат скоринга: {}",
                 event.applicationId(), event.approved());
         Long id = event.applicationId();
+        ApplicationEntity entity = getApplicationEntity(id);
         if(event.approved()){
-            updateApplicationStatus(id, ApplicationStatus.SCORING_APPROVED);
-            updateApplicationStatus(id, ApplicationStatus.APPROVED);
+            moveStatus(entity, ApplicationStatus.SCORING_APPROVED);
+            moveStatus(entity, ApplicationStatus.APPROVED);
+            entity.setFailureReason(null);
         }else {
-            updateApplicationStatus(id, ApplicationStatus.SCORING_REJECTED);
-            updateApplicationStatus(id, ApplicationStatus.REJECTED);
+            moveStatus(entity, ApplicationStatus.SCORING_REJECTED);
+            moveStatus(entity, ApplicationStatus.REJECTED);
+            entity.setFailureReason(event.reason());
         }
+        applicationRepository.save(entity);
         log.info("Заявка с id: {} обновлена после получения результата скоринга, новый статус: {}",
-                id, getApplicationEntity(id).getStatus());
+                id, entity.getStatus());
     }
 
     @Override
     @Transactional
     public ApplicationResponse issueApplication(Long id) {
         return updateApplicationStatus(id, ApplicationStatus.ISSUED);
+    }
+
+    @Override
+    @Transactional
+    public ApplicationResponse failApplication(Long id, String reason) {
+        ApplicationEntity entity = getApplicationEntity(id);
+        moveStatus(entity, ApplicationStatus.FAILED);
+        entity.setFailureReason(reason);
+        ApplicationEntity savedEntity = applicationRepository.save(entity);
+        return applicationMapper.toResponse(savedEntity);
+    }
+
+    @Override
+    @Transactional
+    public ApplicationResponse cancelIssuedApplication(Long id, String reason) {
+        ApplicationEntity entity = getApplicationEntity(id);
+        moveStatus(entity, ApplicationStatus.ISSUE_CANCELLED);
+        entity.setFailureReason(reason);
+        ApplicationEntity savedEntity = applicationRepository.save(entity);
+        outboxService.saveIssueCancelledEvent(savedEntity);
+        return applicationMapper.toResponse(savedEntity);
+    }
+
+    private void moveStatus(ApplicationEntity entity, ApplicationStatus targetStatus) {
+        ApplicationStatus currentStatus = entity.getStatus();
+
+        List<ApplicationStatus> nextStatuses = statusTransition.getOrDefault(currentStatus, List.of());
+
+        if (!nextStatuses.contains(targetStatus)) {
+            throw new IllegalStateException(
+                    "Невозможно перейти из статуса " + currentStatus + " в статус " + targetStatus
+            );
+        }
+
+        entity.setStatus(targetStatus);
     }
 
     private ApplicationEntity getApplicationEntity(Long id){

@@ -8,5 +8,6 @@ public enum ApplicationStatus {
     APPROVED,
     REJECTED,
     ISSUED,
+    ISSUE_CANCELLED,
     FAILED
 }

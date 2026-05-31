@@ -33,6 +33,9 @@ public class ApplicationEntity {
     @Enumerated(EnumType.STRING)
     private ApplicationStatus status = ApplicationStatus.NEW;
 
+    @Column(name = "failure_reason")
+    private String failureReason;
+
     @Column(name = "credit_purpose", nullable = false)
     private String creditPurpose;
 

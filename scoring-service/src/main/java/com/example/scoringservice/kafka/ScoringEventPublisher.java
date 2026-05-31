@@ -1,9 +1,8 @@
 package com.example.scoringservice.kafka;
 
-import com.example.event.ScoringCompletedEvent;
+import com.example.scoringservice.outbox.OutboxEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 
@@ -12,13 +11,14 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ScoringEventPublisher {
 
-    @Value("${topics.scoring.completed}")
-    private String topic;
+    private final KafkaTemplate<String, String> outboxKafkaTemplate;
 
-    private final KafkaTemplate<String, ScoringCompletedEvent> kafkaTemplate;
+    public void publish(OutboxEvent event) throws Exception {
+        log.info("Publishing outbox event: id={}, topic={}, aggregateId={}",
+                event.id(), event.topic(), event.aggregateId());
 
-    public void publish(ScoringCompletedEvent event) {
-        kafkaTemplate.send(topic, event.applicationId().toString(), event);
-        log.info("Published scoring completed event to Kafka: key={}, payload={}", event.applicationId(), event);
+        outboxKafkaTemplate
+                .send(event.topic(), event.aggregateId(), event.payload())
+                .get();
     }
 }
