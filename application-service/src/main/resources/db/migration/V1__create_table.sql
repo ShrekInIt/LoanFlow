@@ -7,7 +7,7 @@ CREATE TABLE applications(
     credit_purpose TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    version BIGINT NOT NULL DEFAULT 0
+    version INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX idx_applications_status ON applications(status);

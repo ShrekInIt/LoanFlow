@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Slf4j
@@ -20,6 +21,7 @@ public class ScoringCompletedConsumer {
             topics = "${topics.scoring.completed}",
             groupId = "${spring.kafka.consumer.group-id}"
     )
+    @Transactional
     public void consume(ScoringCompletedEvent event) {
         log.info("Received scoring completed message: {}", event);
         if(processedEventService.isProcessed(event.eventId(), CONSUMER_NAME)) {
@@ -27,5 +29,6 @@ public class ScoringCompletedConsumer {
             return;
         }
         applicationService.processScoringResult(event);
+        processedEventService.markAsProcessed(event.eventId(), CONSUMER_NAME);
     }
 }

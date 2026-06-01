@@ -51,14 +51,14 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      CLUSTER_ID: "${CLUSTER_ID}"
     volumes:
       - kafka_data:/var/lib/kafka/data
     networks:
       - credit-network
 
   kafka-ui:
-    image: provectuslabs/kafka-ui:latest
+    image: provectuslabs/kafka-ui:v0.7.2
     container_name: credit-kafka-ui
     restart: unless-stopped
     ports:
@@ -70,6 +70,22 @@ services:
       - kafka
     networks:
       - credit-network
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: loanflow-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana:13.0.1
+    container_name: loanflow-grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
 
 volumes:
   postgres_data:

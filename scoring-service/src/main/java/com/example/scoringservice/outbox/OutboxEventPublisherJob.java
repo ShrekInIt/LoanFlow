@@ -1,6 +1,7 @@
 package com.example.scoringservice.outbox;
 
 import com.example.scoringservice.kafka.ScoringEventPublisher;
+import com.example.scoringservice.metrics.OutboxMetrics;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,6 +18,7 @@ public class OutboxEventPublisherJob {
     private final OutboxEventRepository outboxEventRepository;
     private final ScoringEventPublisher scoringEventPublisher;
     private final OutboxEventMapper mapper;
+    private final OutboxMetrics outboxMetrics;
 
     @Transactional
     @Scheduled(fixedRate = 5000)
@@ -30,6 +32,8 @@ public class OutboxEventPublisherJob {
                 event.setStatus(OutboxEventStatus.PUBLISHED);
                 event.setPublishedAt(LocalDateTime.now());
                 event.setErrorMessage(null);
+
+                outboxMetrics.incrementOutboxPublished();
             }catch (Exception ex) {
                 int retryCount = event.getRetryCount() + 1;
                 event.setRetryCount(retryCount);
@@ -40,6 +44,8 @@ public class OutboxEventPublisherJob {
                 }
                 log.error("Failed to publish outbox event: id={}, retryCount={}",
                         event.getId(), retryCount, ex);
+
+                outboxMetrics.incrementOutboxFailed();
             }
         }
     }

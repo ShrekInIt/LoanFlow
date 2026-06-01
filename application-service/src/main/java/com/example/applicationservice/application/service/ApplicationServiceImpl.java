@@ -5,6 +5,7 @@ import com.example.applicationservice.application.ApplicationMapper;
 import com.example.applicationservice.application.ApplicationRepository;
 import com.example.applicationservice.application.web.ApplicationResponse;
 import com.example.applicationservice.application.web.CreateApplicationRequest;
+import com.example.applicationservice.metrics.ApplicationMetrics;
 import com.example.applicationservice.outbox.OutboxService;
 import com.example.enums.ApplicationStatus;
 import com.example.event.ScoringCompletedEvent;
@@ -34,7 +35,7 @@ public class ApplicationServiceImpl implements ApplicationService {
     private final ApplicationRepository applicationRepository;
     private final ApplicationMapper applicationMapper;
     private final OutboxService outboxService;
-
+    private final ApplicationMetrics applicationMetrics;
 
     @Override
     @Transactional
@@ -54,6 +55,8 @@ public class ApplicationServiceImpl implements ApplicationService {
         ApplicationEntity scoringEntity = applicationRepository.save(savedEntity);
 
         outboxService.saveApplicationCreatedEvent(scoringEntity);
+
+        applicationMetrics.incrementApplicationCreated();
 
         return applicationMapper.toResponse(scoringEntity);
     }
@@ -95,10 +98,14 @@ public class ApplicationServiceImpl implements ApplicationService {
             moveStatus(entity, ApplicationStatus.SCORING_APPROVED);
             moveStatus(entity, ApplicationStatus.APPROVED);
             entity.setFailureReason(null);
+
+            applicationMetrics.incrementScoringApproved();
         }else {
             moveStatus(entity, ApplicationStatus.SCORING_REJECTED);
             moveStatus(entity, ApplicationStatus.REJECTED);
             entity.setFailureReason(event.reason());
+
+            applicationMetrics.incrementScoringRejected();
         }
         applicationRepository.save(entity);
         log.info("Заявка с id: {} обновлена после получения результата скоринга, новый статус: {}",

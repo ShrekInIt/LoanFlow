@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @Slf4j
@@ -24,6 +25,7 @@ public class ApplicationCreatedConsumer {
             topics = "${topics.application.created}",
             groupId = "${spring.kafka.consumer.group-id}"
     )
+    @Transactional
     public void consume(ApplicationCreatedEvent event) {
         log.info("Received application created message: {}", event);
 

@@ -14,13 +14,14 @@ public class ProcessedEventService {
 
     @Transactional(readOnly = true)
     public boolean isProcessed(String eventId, String consumerName) {
-        if (repository.existsByEventIdAndConsumerName(eventId, consumerName)) {
-            return true;
-        }
+        return repository.existsByEventIdAndConsumerName(eventId, consumerName);
+    }
+
+    @Transactional
+    public void markAsProcessed(String eventId, String consumerName) {
         ProcessedEventEntity event = new ProcessedEventEntity();
         event.setEventId(eventId);
         event.setConsumerName(consumerName);
         repository.save(event);
-        return false;
     }
 }

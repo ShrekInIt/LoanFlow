@@ -6,9 +6,9 @@ import com.example.applicationservice.application.ApplicationRepository;
 import com.example.applicationservice.application.service.ApplicationServiceImpl;
 import com.example.applicationservice.application.web.ApplicationResponse;
 import com.example.applicationservice.application.web.CreateApplicationRequest;
+import com.example.applicationservice.metrics.ApplicationMetrics;
 import com.example.applicationservice.outbox.OutboxService;
 import com.example.enums.ApplicationStatus;
-import com.example.event.ApplicationCreatedEvent;
 import com.example.event.ScoringCompletedEvent;
 import jakarta.persistence.EntityNotFoundException;
 import org.junit.jupiter.api.Test;
@@ -19,6 +19,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -36,6 +37,9 @@ public class ApplicationServiceImplTest {
 
     @Mock
     private OutboxService outboxService;
+
+    @Mock
+    private ApplicationMetrics applicationMetrics;
 
     @InjectMocks
     private ApplicationServiceImpl applicationService;
@@ -133,7 +137,6 @@ public class ApplicationServiceImplTest {
         CreateApplicationRequest request = getCreateRequest();
         ApplicationEntity entity = getEntity(ApplicationStatus.NEW);
 
-        ApplicationCreatedEvent event = getEvent(entity);
         ApplicationResponse response = getResponse(entity, ApplicationStatus.SCORING_IN_PROGRESS);
 
         when(applicationRepository.existsByFullNameAndStatus(
@@ -151,9 +154,6 @@ public class ApplicationServiceImplTest {
 
         when(applicationRepository.save(entity))
                 .thenReturn(entity);
-
-        when(applicationMapper.toApplicationCreatedEvent(entity))
-                .thenReturn(event);
 
         when(applicationMapper.toResponse(entity))
                 .thenReturn(response);
@@ -178,8 +178,8 @@ public class ApplicationServiceImplTest {
 
         verify(applicationRepository, times(2)).save(entity);
 
-        verify(applicationMapper).toApplicationCreatedEvent(entity);
         verify(outboxService).saveApplicationCreatedEvent(entity);
+        verify(applicationMetrics).incrementApplicationCreated();
         verify(applicationMapper).toResponse(entity);
     }
 
@@ -267,6 +267,22 @@ public class ApplicationServiceImplTest {
     }
 
     @Test
+    void getAllApplications_shouldMapEveryEntity() {
+        ApplicationEntity first = getEntity(ApplicationStatus.NEW);
+        ApplicationEntity second = getEntity(ApplicationStatus.APPROVED);
+        second.setId(2L);
+        ApplicationResponse firstResponse = getResponse(first, ApplicationStatus.NEW);
+        ApplicationResponse secondResponse = getResponse(second, ApplicationStatus.APPROVED);
+
+        when(applicationRepository.findAll()).thenReturn(List.of(first, second));
+        when(applicationMapper.toResponse(first)).thenReturn(firstResponse);
+        when(applicationMapper.toResponse(second)).thenReturn(secondResponse);
+
+        assertThat(applicationService.getAllApplications())
+                .isEqualTo(List.of(firstResponse, secondResponse));
+    }
+
+    @Test
     void  processScoringResult_whenApproved_shouldMoveToApproved() {
         ApplicationEntity entity = getEntity(ApplicationStatus.SCORING_IN_PROGRESS);
         ScoringCompletedEvent event = getScoringCompletedEvent(true);
@@ -280,9 +296,11 @@ public class ApplicationServiceImplTest {
         applicationService.processScoringResult(event);
 
         assertThat(entity.getStatus()).isEqualTo(ApplicationStatus.APPROVED);
+        assertThat(entity.getFailureReason()).isNull();
 
-        verify(applicationRepository, times(3)).findById(1L);
-        verify(applicationRepository, times(2)).save(entity);
+        verify(applicationRepository).findById(1L);
+        verify(applicationRepository).save(entity);
+        verify(applicationMetrics).incrementScoringApproved();
     }
 
     @Test
@@ -299,9 +317,11 @@ public class ApplicationServiceImplTest {
         applicationService.processScoringResult(event);
 
         assertThat(entity.getStatus()).isEqualTo(ApplicationStatus.REJECTED);
+        assertThat(entity.getFailureReason()).isEqualTo("Rejected");
 
-        verify(applicationRepository, times(3)).findById(1L);
-        verify(applicationRepository, times(2)).save(entity);
+        verify(applicationRepository).findById(1L);
+        verify(applicationRepository).save(entity);
+        verify(applicationMetrics).incrementScoringRejected();
     }
 
     @Test
@@ -364,6 +384,39 @@ public class ApplicationServiceImplTest {
         verify(applicationMapper, never()).toResponse(any());
     }
 
+    @Test
+    void failApplication_whenTransitionAllowed_shouldStoreReason() {
+        ApplicationEntity entity = getEntity(ApplicationStatus.APPROVED);
+        ApplicationResponse response = getResponse(entity, ApplicationStatus.FAILED);
+
+        when(applicationRepository.findById(1L)).thenReturn(Optional.of(entity));
+        when(applicationRepository.save(entity)).thenReturn(entity);
+        when(applicationMapper.toResponse(entity)).thenReturn(response);
+
+        ApplicationResponse actual = applicationService.failApplication(1L, "Manual failure");
+
+        assertThat(actual).isEqualTo(response);
+        assertThat(entity.getStatus()).isEqualTo(ApplicationStatus.FAILED);
+        assertThat(entity.getFailureReason()).isEqualTo("Manual failure");
+    }
+
+    @Test
+    void cancelIssuedApplication_whenIssued_shouldStoreReasonAndPublishEvent() {
+        ApplicationEntity entity = getEntity(ApplicationStatus.ISSUED);
+        ApplicationResponse response = getResponse(entity, ApplicationStatus.ISSUE_CANCELLED);
+
+        when(applicationRepository.findById(1L)).thenReturn(Optional.of(entity));
+        when(applicationRepository.save(entity)).thenReturn(entity);
+        when(applicationMapper.toResponse(entity)).thenReturn(response);
+
+        ApplicationResponse actual = applicationService.cancelIssuedApplication(1L, "Notification failed");
+
+        assertThat(actual).isEqualTo(response);
+        assertThat(entity.getStatus()).isEqualTo(ApplicationStatus.ISSUE_CANCELLED);
+        assertThat(entity.getFailureReason()).isEqualTo("Notification failed");
+        verify(outboxService).saveIssueCancelledEvent(entity);
+    }
+
     private ApplicationEntity getEntity(
             ApplicationStatus status
     ){
@@ -416,16 +469,4 @@ public class ApplicationServiceImplTest {
                 .build();
     }
 
-    private ApplicationCreatedEvent getEvent(ApplicationEntity entity){
-        return new ApplicationCreatedEvent(
-                "Yippso-02992",
-                entity.getId(),
-                entity.getFullName(),
-                entity.getSalary(),
-                entity.getCreditAmount(),
-                entity.getCreditPurpose(),
-                entity.getStatus(),
-                entity.getCreatedAt()
-           );
-    }
 }

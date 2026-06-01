@@ -31,6 +31,7 @@ public class ApplicationEntity {
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private ApplicationStatus status = ApplicationStatus.NEW;
 
     @Column(name = "failure_reason")
@@ -47,6 +48,7 @@ public class ApplicationEntity {
 
     @Version
     @Column(name = "version", nullable = false)
+    @Builder.Default
     private int version = 0;
 
     @PrePersist

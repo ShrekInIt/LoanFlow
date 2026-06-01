@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -69,6 +70,24 @@ public class ApplicationCreatedConsumerTest {
         verify(processedEventService).isProcessed(eq(event.eventId()), anyString());
         verify(scoringService, never()).scoring(any());
         verify(outboxService, never()).saveScoringCompletedEvent(any());
+        verify(processedEventService, never()).markAsProcessed(anyString(), anyString());
+    }
+
+    @Test
+    void consume_whenOutboxSaveFails_shouldNotMarkEventAsProcessed() {
+        ApplicationCreatedEvent event = getApplicationCreatedEvent();
+        ScoringCompletedEvent completedEvent = getScoringCompletedEvent(event);
+
+        when(processedEventService.isProcessed(eq(event.eventId()), anyString())).thenReturn(false);
+        when(scoringService.scoring(event)).thenReturn(completedEvent);
+        doThrow(new IllegalStateException("Outbox save failed"))
+                .when(outboxService)
+                .saveScoringCompletedEvent(completedEvent);
+
+        assertThatThrownBy(() -> consumer.consume(event))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Outbox save failed");
+
         verify(processedEventService, never()).markAsProcessed(anyString(), anyString());
     }
 

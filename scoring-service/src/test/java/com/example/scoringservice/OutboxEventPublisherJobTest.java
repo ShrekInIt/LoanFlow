@@ -1,6 +1,7 @@
 package com.example.scoringservice;
 
 import com.example.scoringservice.kafka.ScoringEventPublisher;
+import com.example.scoringservice.metrics.OutboxMetrics;
 import com.example.scoringservice.outbox.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,6 +28,9 @@ class OutboxEventPublisherJobTest {
     @Mock
     private OutboxEventMapper mapper;
 
+    @Mock
+    private OutboxMetrics outboxMetrics;
+
     @InjectMocks
     private OutboxEventPublisherJob job;
 
@@ -48,6 +52,7 @@ class OutboxEventPublisherJobTest {
         assertThat(entity.getErrorMessage()).isNull();
 
         verify(scoringEventPublisher).publish(event);
+        verify(outboxMetrics).incrementOutboxPublished();
     }
 
     @Test
@@ -72,6 +77,7 @@ class OutboxEventPublisherJobTest {
         assertThat(entity.getErrorMessage()).contains("Kafka unavailable");
 
         verify(scoringEventPublisher).publish(event);
+        verify(outboxMetrics).incrementOutboxFailed();
     }
 
     @Test
@@ -99,6 +105,7 @@ class OutboxEventPublisherJobTest {
         assertThat(entity.getErrorMessage()).contains("Kafka unavailable");
 
         verify(scoringEventPublisher).publish(event);
+        verify(outboxMetrics).incrementOutboxFailed();
     }
 
     private OutboxEventEntity getOutboxEntity() {

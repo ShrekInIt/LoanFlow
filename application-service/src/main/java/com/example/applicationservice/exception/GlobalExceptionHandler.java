@@ -2,6 +2,7 @@ package com.example.applicationservice.exception;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -41,7 +42,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(exception = {
             IllegalArgumentException.class,
-            IllegalStateException.class
+            IllegalStateException.class,
+            OptimisticLockingFailureException.class
     })
     public ResponseEntity<ErrorResponse> handleBadRequest(
             Exception ex

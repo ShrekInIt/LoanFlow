@@ -13,8 +13,8 @@ public class OutboxService {
 
     @Value("${topics.scoring.completed}")
     private String topic;
-    private static final String EVENT_TYPE_SCORING_COMPLETED = "APPLICATION";
-    private static final String EVENT_TYPE_APPLICATION_CREATED = "SCORING_COMPLETED";
+    private static final String AGGREGATE_TYPE_APPLICATION = "APPLICATION";
+    private static final String EVENT_TYPE_SCORING_COMPLETED = "SCORING_COMPLETED";
     private final OutboxEventRepository repository;
     private final ObjectMapper objectMapper;
 
@@ -23,13 +23,13 @@ public class OutboxService {
         try {
             payload = objectMapper.writeValueAsString(event);
         } catch (JsonProcessingException ex) {
-            throw new IllegalStateException("Failed to serialize ApplicationCreatedEvent", ex);
+            throw new IllegalStateException("Failed to serialize ScoringCompletedEvent", ex);
         }
 
         OutboxEventEntity eventOutbox = OutboxEventEntity.builder()
-                .aggregateType(EVENT_TYPE_SCORING_COMPLETED)
+                .aggregateType(AGGREGATE_TYPE_APPLICATION)
                 .aggregateId(event.applicationId().toString())
-                .eventType(EVENT_TYPE_APPLICATION_CREATED)
+                .eventType(EVENT_TYPE_SCORING_COMPLETED)
                 .topic(topic)
                 .payload(payload)
                 .status(OutboxEventStatus.NEW)

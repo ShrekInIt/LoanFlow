@@ -8,6 +8,7 @@ import com.example.applicationservice.outbox.OutboxEventStatus;
 import com.example.applicationservice.outbox.OutboxService;
 import com.example.enums.ApplicationStatus;
 import com.example.event.ApplicationCreatedEvent;
+import com.example.event.IssueCancelledEvent;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -87,6 +88,55 @@ public class OutboxServiceTest {
         assertThatThrownBy(() -> outboxService.saveApplicationCreatedEvent(entity))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("Failed to serialize ApplicationCreatedEvent");
+
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void saveIssueCancelledEvent_success() throws Exception {
+        ReflectionTestUtils.setField(outboxService, "topicIssuedCanceled", "issue.cancelled");
+        ApplicationEntity entity = getEntity();
+        entity.setFailureReason("Notification failed");
+        IssueCancelledEvent event = new IssueCancelledEvent(
+                "issue-cancelled-event-id",
+                entity.getId(),
+                entity.getFailureReason(),
+                LocalDateTime.now()
+        );
+
+        when(applicationMapper.toIssueCanceledEvent(entity)).thenReturn(event);
+        when(objectMapper.writeValueAsString(event)).thenReturn("{\"applicationId\":1}");
+
+        outboxService.saveIssueCancelledEvent(entity);
+
+        ArgumentCaptor<OutboxEventEntity> captor = ArgumentCaptor.forClass(OutboxEventEntity.class);
+        verify(repository).save(captor.capture());
+        OutboxEventEntity saved = captor.getValue();
+
+        assertThat(saved.getAggregateType()).isEqualTo("APPLICATION");
+        assertThat(saved.getAggregateId()).isEqualTo("1");
+        assertThat(saved.getEventType()).isEqualTo("ISSUE_CANCELLED");
+        assertThat(saved.getTopic()).isEqualTo("issue.cancelled");
+        assertThat(saved.getStatus()).isEqualTo(OutboxEventStatus.NEW);
+    }
+
+    @Test
+    void saveIssueCancelledEvent_whenSerializationFailed_shouldThrowException() throws Exception {
+        ApplicationEntity entity = getEntity();
+        IssueCancelledEvent event = new IssueCancelledEvent(
+                "issue-cancelled-event-id",
+                entity.getId(),
+                "Notification failed",
+                LocalDateTime.now()
+        );
+
+        when(applicationMapper.toIssueCanceledEvent(entity)).thenReturn(event);
+        when(objectMapper.writeValueAsString(event))
+                .thenThrow(new JsonProcessingException("boom") {});
+
+        assertThatThrownBy(() -> outboxService.saveIssueCancelledEvent(entity))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Failed to serialize IssueCancelledEvent");
 
         verify(repository, never()).save(any());
     }

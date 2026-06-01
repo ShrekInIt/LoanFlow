@@ -1,6 +1,7 @@
 package com.example.applicationservice.service;
 
 import com.example.applicationservice.kafka.ApplicationEventPublisher;
+import com.example.applicationservice.metrics.OutboxMetrics;
 import com.example.applicationservice.outbox.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +27,9 @@ public class OutboxEventPublisherJobTest {
     @Mock
     OutboxEventMapper mapper;
 
+    @Mock
+    OutboxMetrics outboxMetrics;
+
     @InjectMocks
     OutboxEventPublisherJob outboxEventPublisherJob;
 
@@ -47,6 +51,7 @@ public class OutboxEventPublisherJobTest {
         assertThat(entity.getErrorMessage()).isNull();
 
         verify(applicationEventPublisher).publish(event);
+        verify(outboxMetrics).incrementOutboxPublished();
     }
 
     @Test
@@ -69,6 +74,27 @@ public class OutboxEventPublisherJobTest {
         assertThat(entity.getStatus()).isEqualTo(OutboxEventStatus.NEW);
         assertThat(entity.getRetryCount()).isEqualTo(1);
         assertThat(entity.getErrorMessage()).contains("Kafka unavailable");
+        verify(outboxMetrics).incrementOutboxFailed();
+    }
+
+    @Test
+    void publishEvent_whenMaxRetriesReached_shouldMarkAsFailed() throws Exception {
+        OutboxEventEntity entity = getOutboxEntity();
+        entity.setRetryCount(4);
+        OutboxEvent event = getOutboxEvent(entity);
+
+        when(outboxEventRepository.findTop100ByStatusOrderByCreatedAtAsc(OutboxEventStatus.NEW))
+                .thenReturn(List.of(entity));
+        when(mapper.toOutboxEvent(entity)).thenReturn(event);
+        doThrow(new RuntimeException("Kafka unavailable"))
+                .when(applicationEventPublisher)
+                .publish(event);
+
+        outboxEventPublisherJob.publishEvent();
+
+        assertThat(entity.getStatus()).isEqualTo(OutboxEventStatus.FAILED);
+        assertThat(entity.getRetryCount()).isEqualTo(5);
+        verify(outboxMetrics).incrementOutboxFailed();
     }
 
     private OutboxEventEntity getOutboxEntity() {
