@@ -8,7 +8,4 @@ import java.util.UUID;
 
 @Repository
 public interface SagaLogRepository extends JpaRepository<SagaLogEntity, UUID> {
-    List<SagaLogEntity> findBySagaIdOrderByCreatedAtAsc(UUID sagaId);
-
-    List<SagaLogEntity> findByApplicationIdOrderByCreatedAtAsc(Long applicationId);
 }

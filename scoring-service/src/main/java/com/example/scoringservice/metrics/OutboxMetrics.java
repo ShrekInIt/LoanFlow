@@ -15,7 +15,7 @@ public class OutboxMetrics {
                 .register(meterRegistry);
         this.loanOutboxFailedCounter = Counter.builder("loan_outbox_failed_total")
                 .description("Total number of created outbox applications failed")
-                .register(meterRegistry);;
+                .register(meterRegistry);
     }
 
     public void incrementOutboxPublished(){
